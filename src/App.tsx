@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Code2, Send, Server, Loader2, CheckCircle2, ArrowLeft, FolderOpen, Plus, Trash2, AlertCircle } from 'lucide-react';
+import LoadingScreen from './components/Loading';
+import { Code2, Send, Server, Loader2, Plus, Trash2, AlertCircle } from 'lucide-react';
+import SuccessScreen from './components/SuccessScreen';
+import ErrorScreen from './components/ErrorScreen';
 
 interface Endpoint {
   path: string;
@@ -13,7 +16,7 @@ interface FormData {
 }
 
 const defaultRequestBody = JSON.stringify({
-  "username": "myname",
+  "username": "my name",
   "email": "myname@email.com",
   "nested": {
     "field": "value"
@@ -28,19 +31,32 @@ function App() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isError, setIsError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const [projectPath, setProjectPath] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    // setIsError(true)
     
     try {
-      // Simulate API call - replace with actual backend call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Form submitted:', formData);
-      // Simulate receiving project path from backend
-      setProjectPath(`/projects/${formData.serviceName}`);
-      setIsSuccess(true);
+      const response = await fetch('http://localhost:8080/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setProjectPath(data.projectPath);
+        setIsSuccess(true);
+      } else {
+          setIsError(true);
+          setErrorMessage(data.message)
+          console.error('Error:', data.message);
+          alert(`Error: ${data.message}`);
+      }
     } catch (error) {
       console.error('Error generating API:', error);
     } finally {
@@ -82,68 +98,16 @@ function App() {
   };
 
   if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8 flex items-center justify-center">
-        <div className="max-w-2xl w-full">
-          <div className="bg-gray-800 p-8 rounded-2xl shadow-xl">
-            <div className="flex flex-col items-center text-center space-y-6">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center animate-[scale_0.5s_ease-out]">
-                  <CheckCircle2 className="w-12 h-12 text-green-400" />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-white">API Project Generated Successfully!</h2>
-                <p className="text-gray-400">Your {formData.serviceName} service with {formData.endpoints.length} endpoint{formData.endpoints.length > 1 ? 's' : ''} is ready to use</p>
-              </div>
+    return <SuccessScreen formData={formData} projectPath={projectPath} handleReset={handleReset} />
+  }
+  console.log(isError)
 
-              <div className="w-full p-4 bg-gray-700/50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <FolderOpen className="w-5 h-5 text-blue-400" />
-                  <span className="text-sm font-mono text-gray-300">{projectPath}</span>
-                </div>
-              </div>
-
-              <div className="space-y-4 w-full">
-                <div className="grid grid-cols-1 gap-3">
-                  <button
-                    onClick={handleReset}
-                    className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                    Create Another API
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  if (isError) {
+    return <ErrorScreen handleReset={handleReset} message={errorMessage} />
   }
 
   if (isLoading) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="relative">
-            <div className="w-20 h-20 border-4 border-blue-400 rounded-full animate-pulse" />
-            <Loader2 className="w-12 h-12 text-blue-400 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-white">Generating Your API Project</h2>
-            <p className="text-gray-400">Please wait while we set up your {formData.serviceName} service</p>
-          </div>
-          <div className="flex flex-col items-center space-y-2">
-            <div className="w-64 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-400 rounded-full animate-[loading_2s_ease-in-out_infinite]" />
-            </div>
-            <div className="text-sm text-gray-500">This may take a few moments...</div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen formData={formData} />
   }
 
 
@@ -245,9 +209,9 @@ function App() {
               </label>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { value: 'express', label: 'Node.js Express' },
-                  { value: 'hapi', label: 'Node.js Hapi' },
-                  { value: 'go', label: 'Go' }
+                  { value: 'express', label: 'ExpressJS' },
+                  { value: 'hapi', label: 'HapiJS' },
+                  { value: 'go', label: 'Gin' }
                 ].map((option) => (
                   <button
                     key={option.value}
@@ -279,6 +243,9 @@ function App() {
             {isLoading ? 'Generating...' : 'Generate API Project'}
           </button>
         </form>
+      </div>
+      <div className='w-full flex items-center justify-center mt-10 text-gray-400 italic'>
+        <h5>By afatbenz - {new Date().getFullYear()}</h5>
       </div>
     </div>
   );
